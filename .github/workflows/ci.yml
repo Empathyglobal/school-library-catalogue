@@ -1,0 +1,26 @@
+name: Verify catalogue
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check catalogue data and source
+        run: node --test tests/catalogue.test.cjs
+      - name: Install browser test tooling only
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.64.1
+      - name: Install Chromium for tests
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Exercise desktop and phone browser flows
+        run: node tests/browser-smoke.cjs
