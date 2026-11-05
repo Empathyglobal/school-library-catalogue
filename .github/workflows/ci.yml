@@ -24,3 +24,11 @@ jobs:
         run: npx --no-install playwright install --with-deps chromium
       - name: Exercise desktop and phone browser flows
         run: node tests/browser-smoke.cjs
+      - name: Save public catalogue screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-browser-screenshots
+          path: browser-results/
+          if-no-files-found: ignore
+          retention-days: 7

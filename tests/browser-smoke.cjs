@@ -5,6 +5,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
+const screenshotDir=path.join(root,'browser-results');
+fs.mkdirSync(screenshotDir,{recursive:true});
 const originals=JSON.parse(fs.readFileSync(path.join(root,'books.json'),'utf8'));
 (async()=>{
  const server=http.createServer((req,res)=>{const name=new URL(req.url,'http://localhost').pathname;if(name==='/favicon.ico'){res.writeHead(204);return res.end()}const file=name==='/'?'index.html':name==='/books.json'?'books.json':null;if(!file){res.writeHead(404);return res.end('Not found')}res.setHeader('Content-Type',file.endsWith('.json')?'application/json':'text/html; charset=utf-8');res.end(fs.readFileSync(path.join(root,file)))});
@@ -17,6 +19,7 @@ const originals=JSON.parse(fs.readFileSync(path.join(root,'books.json'),'utf8'))
    const page=await browser.newPage({viewport});const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text)});
    await page.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin){external.push(url.origin);return route.abort()}return route.continue()});
    await page.goto(origin);await page.waitForFunction(()=>document.querySelector('#count').textContent==='1026 books');assert.equal(await page.locator('.card').count(),120);assert.equal(await page.locator('img').count(),0);
+   await page.screenshot({path:path.join(screenshotDir,`${label}-catalogue.png`),fullPage:true});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await page.getByRole('button',{name:'Show more books'}).click();assert.equal(await page.locator('.card').count(),240);
    await page.locator('#q').fill('dahl');assert.ok(parseInt(await page.locator('#count').innerText())>0);
@@ -24,7 +27,7 @@ const originals=JSON.parse(fs.readFileSync(path.join(root,'books.json'),'utf8'))
    await page.locator('#q').fill('zzzz-no-such-book');assert.equal(await page.locator('#count').innerText(),'0 books');assert.ok(await page.locator('#empty').isVisible());
    await page.locator('#q').fill('');const chip=page.locator('#chips .chip').nth(1);await chip.click();assert.equal(await chip.getAttribute('aria-pressed'),'true');assert.ok(parseInt(await page.locator('#count').innerText())<1026);
    await page.locator('#chips .chip').first().click();assert.equal(await page.locator('#count').innerText(),'1026 books');
-   await page.locator('.card').first().click();assert.ok(await page.locator('dialog[open]').isVisible());assert.ok((await page.locator('#dbody').innerText()).includes('Publisher'));await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);assert.equal(new URL(page.url()).hash,'');
+   await page.locator('.card').first().click();assert.ok(await page.locator('dialog[open]').isVisible());assert.ok((await page.locator('#dbody').innerText()).includes('Publisher'));await page.screenshot({path:path.join(screenshotDir,`${label}-details.png`)});await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);await page.waitForFunction(()=>location.hash==='');assert.equal(new URL(page.url()).hash,'');
    await page.locator('.card').first().focus();await page.keyboard.press('Enter');assert.ok(await page.locator('dialog[open]').isVisible());await page.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await page.locator('dialog[open]').count(),0);
    await page.goto(origin+'/#book-169');await page.waitForSelector('dialog[open]');assert.ok((await page.locator('#dbody').innerText()).includes('978-1-84236-878-7'));await page.getByRole('button',{name:'Close',exact:true}).click();
    assert.deepEqual(errors,[]);assert.deepEqual(external,[]);reports.push({viewport:label,checks:14,errors,external_requests:external.length});await page.close();
