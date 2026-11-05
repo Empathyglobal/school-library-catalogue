@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-Mv8KxDI575V18rKGsBBUMiPH6TXNDiSnfTHrCwAEahc='; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<title>Empathy School Library</title>
+<meta name="description" content="A reusable school library catalogue by Eric Gonzalez-Payne. Browse 1,026 factual book records from Empathy School Bali.">
+<meta name="author" content="Eric Gonzalez-Payne">
+<meta name="referrer" content="no-referrer">
+<style>
+:root{
+  --bg:#faf7f2;--surface:#ffffff;--ink:#1f2328;--muted:#5d6570;--line:#e6e0d6;
+  --accent:#2f6f5e;--accent-ink:#ffffff;--chip:#efe9df;--shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#15181b;--surface:#1e2226;--ink:#eceae6;--muted:#a3a9b0;--line:#2e343a;
+  --accent:#6fc0a8;--accent-ink:#10231d;--chip:#262b30;--shadow:0 1px 2px rgba(0,0,0,.4);
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:28px 16px 8px;max-width:1200px;margin:0 auto}
+h1{margin:0 0 4px;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.01em}
+.sub{margin:0;color:var(--muted)}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1200px;margin:0 auto;padding:12px 16px}
+.search{display:flex;gap:8px;align-items:center}
+input[type=search]{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+input[type=search]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.count{color:var(--muted);font-size:14px;white-space:nowrap}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:thin}
+.chip{flex:none;font:inherit;font-size:14px;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr);gap:12px}}
+.card{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card:focus-visible .cover{outline:3px solid var(--accent);outline-offset:2px}
+.cover{aspect-ratio:2/3;width:100%;border-radius:8px;overflow:hidden;background:var(--chip);box-shadow:var(--shadow);position:relative}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.plain{height:100%;display:flex;align-items:center;justify-content:center;padding:12px;text-align:center;font-weight:600;line-height:1.25;color:#fff;font-size:15px;overflow:hidden;word-break:break-word}
+.t{font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.a{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--muted);text-align:center;padding:48px 0}
+.more{display:block;margin:24px auto 8px;font:inherit;padding:10px 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+dialog{border:none;border-radius:14px;padding:0;max-width:720px;width:calc(100% - 32px);background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.d{display:grid;grid-template-columns:200px 1fr;gap:20px;padding:20px}
+@media (max-width:560px){.d{grid-template-columns:1fr}.d .cover{max-width:200px;margin:0 auto}}
+.d h2{margin:0 0 4px;font-size:1.35rem;line-height:1.25}
+.d .by{margin:0 0 14px;color:var(--muted)}
+.d dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.d dt{color:var(--muted)}
+.d dd{margin:0;word-break:break-word}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags .chip{font-size:13px;padding:4px 10px}
+.close{position:absolute;top:10px;right:10px;border:none;background:var(--chip);color:var(--ink);width:36px;height:36px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer}
+footer{max-width:1200px;margin:0 auto;padding:24px 16px 40px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Empathy School Library</h1>
+  <p class="sub">Open-source snapshot of 1,026 Empathy School Bali book records, exported 25 September 2026. Cover images are omitted. Copy counts are historical, not live availability.</p>
+</header>
+<div class="bar"><div class="bar-in">
+  <div class="search">
+    <input id="q" type="search" placeholder="Title, author or subject" aria-label="Search books" autocomplete="off">
+    <span class="count" id="count" aria-live="polite"></span>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Filter by subject"></div>
+</div></div>
+<main>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>No books match that search.</p>
+  <button class="more" id="more" hidden>Show more books</button>
+</main>
+<footer>Empathy School Library Catalogue · Created by Eric Gonzalez-Payne / Empathy Global. <a href="https://ericgp.com/" rel="noreferrer">EricGP.com</a> · <a href="https://github.com/Empathyglobal/school-library-catalogue" rel="noreferrer">Source and reuse</a>. Book and artwork rights remain with their owners.</footer>
+<dialog id="dlg" aria-labelledby="dtitle"><div style="position:relative"><button class="close" id="dclose" aria-label="Close">&times;</button><div id="dbody"></div></div></dialog>
+<script>
+(function(){
+  var PAGE=120, books=[], shown=[], limit=PAGE, active='', q='';
+  var $=function(id){return document.getElementById(id)};
+  var grid=$('grid'), chips=$('chips'), dlg=$('dlg');
+  var PAL=['#2f6f5e','#8a4f7d','#b5652b','#3b5f8f','#7a6a2e','#9b3d3d','#4d7a3a','#5b4f96','#2d7c8a','#8a5a3b'];
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function norm(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}
+  function color(b){return PAL[b.id%PAL.length]}
+  function coverHTML(b,lazy){
+    return '<div class="cover"><div class="plain" style="background:'+color(b)+'">'+esc(b.title)+'</div></div>';
+  }
+  function filter(){
+    var terms=norm(q).split(/\s+/).filter(Boolean);
+    shown=books.filter(function(b){
+      if(active && b.subjects.indexOf(active)<0) return false;
+      for(var i=0;i<terms.length;i++) if(b._s.indexOf(terms[i])<0) return false;
+      return true;
+    });
+    limit=PAGE; render();
+  }
+  function render(){
+    var html='';
+    for(var i=0;i<Math.min(limit,shown.length);i++){
+      var b=shown[i];
+      html+='<button class="card" data-id="'+b.id+'">'+coverHTML(b,i>11)+'<span class="t">'+esc(b.title)+'</span><span class="a">'+esc(b.authors.join(', '))+'</span></button>';
+    }
+    grid.innerHTML=html;
+    $('empty').hidden=shown.length>0;
+    $('more').hidden=shown.length<=limit;
+    $('count').textContent=shown.length+(shown.length===1?' book':' books');
+  }
+  function renderChips(){
+    var c=Object.create(null);books.forEach(function(b){b.subjects.forEach(function(s){c[s]=(c[s]||0)+1})});
+    var top=Object.keys(c).sort(function(a,b){return c[b]-c[a]}).slice(0,12);
+    chips.innerHTML='<button class="chip" data-s="" aria-pressed="true">All</button>'+top.map(function(s){return '<button class="chip" data-s="'+esc(s)+'" aria-pressed="false">'+esc(s)+'</button>'}).join('');
+  }
+  function setSubject(s){
+    active=s;
+    Array.prototype.forEach.call(chips.children,function(el){el.setAttribute('aria-pressed',String(el.getAttribute('data-s')===s))});
+    if(s && !Array.prototype.some.call(chips.children,function(el){return el.getAttribute('data-s')===s})){
+      chips.insertAdjacentHTML('beforeend','<button class="chip" data-s="'+esc(s)+'" aria-pressed="true">'+esc(s)+'</button>');
+    }
+    filter();
+  }
+  function row(k,v){return v?'<dt>'+k+'</dt><dd>'+v+'</dd>':''}
+  function open(id){
+    var b=books.find(function(x){return x.id===id}); if(!b) return;
+    $('dbody').innerHTML='<div class="d">'+coverHTML(b,false)+'<div><h2 id="dtitle">'+esc(b.title)+'</h2><p class="by">'+esc(b.authors.join(', '))+'</p><dl>'+
+      row('Publisher',esc(b.publisher))+row('Year',esc(b.year))+row('ISBN',esc(b.isbn))+row('Call number',esc(b.call_number))+
+      row('Copies',String(b.copies))+
+      row('Subjects',b.subjects.length?'<div class="tags">'+b.subjects.map(function(s){return '<button class="chip" data-sub="'+esc(s)+'">'+esc(s)+'</button>'}).join('')+'</div>':'')+
+      '</dl></div></div>';
+    if(!dlg.open) dlg.showModal();
+    if(location.hash!=='#book-'+id) history.replaceState(null,'','#book-'+id);
+  }
+  function close(){ if(dlg.open) dlg.close(); }
+  dlg.addEventListener('close',function(){ if(location.hash) history.replaceState(null,'',location.pathname+location.search); });
+  dlg.addEventListener('click',function(e){
+    if(e.target===dlg) return close();
+    var s=e.target.closest('[data-sub]'); if(s){ close(); $('q').value=''; q=''; setSubject(s.getAttribute('data-sub')); window.scrollTo(0,0); }
+  });
+  $('dclose').addEventListener('click',close);
+  grid.addEventListener('click',function(e){var c=e.target.closest('.card'); if(c) open(+c.getAttribute('data-id'))});
+  chips.addEventListener('click',function(e){var c=e.target.closest('.chip'); if(c) setSubject(c.getAttribute('data-s'))});
+  $('more').addEventListener('click',function(){limit+=PAGE;render()});
+  $('q').addEventListener('input',function(e){q=e.target.value;filter()});
+  function validateCatalogue(data){
+    if(!Array.isArray(data)) throw new Error('Expected a catalogue array');
+    var seen=new Set();
+    function text(v){if(typeof v!=='string') throw new Error('Expected text');return v;}
+    function list(v){if(!Array.isArray(v)) throw new Error('Expected a text list');return v.map(text);}
+    return data.map(function(b){
+      if(!b || !Number.isSafeInteger(b.id) || b.id<=0 || seen.has(b.id) || !Number.isSafeInteger(b.copies) || b.copies<0) throw new Error('Invalid catalogue record');
+      seen.add(b.id);
+      var safe={id:b.id,title:text(b.title),authors:list(b.authors),publisher:text(b.publisher),year:text(b.year),isbn:text(b.isbn),subjects:list(b.subjects),call_number:text(b.call_number),copies:b.copies,cover:''};
+      safe._s=norm([safe.title,safe.authors.join(' '),safe.subjects.join(' ')].join(' '));
+      return safe;
+    });
+  }
+  fetch('books.json').then(function(r){if(!r.ok) throw new Error('Catalogue response failed');return r.json()}).then(function(data){
+    books=validateCatalogue(data);
+    renderChips(); filter();
+    var m=location.hash.match(/^#book-(\d+)$/); if(m) open(+m[1]);
+  }).catch(function(){ $('empty').hidden=false; $('empty').textContent='The catalogue could not load. Please refresh the page.'; });
+})();
+</script>
+</body>
+</html>
