@@ -42,8 +42,19 @@ With Node.js 22 or newer:
 node --test tests/catalogue.test.cjs
 ```
 
-Eleven tests check all records, schema, safe rendering, search, pagination, filters, detail/close behavior, malformed data, failed loads and the script policy. These use a DOM test double, not a real browser. An optional `tests/browser-smoke.cjs` is supplied for environments with Playwright and Chromium already installed; browser verification did not complete in the release environment. See VERIFICATION.md for the exact limitation.
+Seventeen Node tests check all records, schema, safe rendering, search, pagination, filters, detail/close behavior, fragment navigation, queued close events, malformed data, failed loads and the script policy. These use a DOM test double with explicitly queued native close events.
+
+GitHub Actions also runs `tests/browser-smoke.cjs` with Playwright 1.64.1 and Chromium. It checks desktop and phone-sized layouts, keyboard interaction, initial and same-document deep links, Back/Forward, repeated and interrupted dialog flows, escaped text, malformed data and absence of external requests. To run that suite separately:
+
+```sh
+npm install --no-save --package-lock=false --ignore-scripts playwright@1.64.1
+npx --no-install playwright install chromium
+node tests/browser-smoke.cjs
+```
+
+The application itself still has no npm dependencies. See [VERIFICATION.md](VERIFICATION.md) for the passing CI evidence and scope.
 
 ## License and attribution
 
 Original code and documentation are [MIT licensed](LICENSE), copyright (c) 2026 **Eric Gonzalez**. Professional attribution is **Eric Gonzalez-Payne**. Any rights held in this catalogue's original selection or arrangement are included under the same permission; no rights in the underlying books, artwork, third-party text, trademarks or publisher materials are granted. See CATALOGUE-NOTICE.md before republishing or extending the dataset.
+
