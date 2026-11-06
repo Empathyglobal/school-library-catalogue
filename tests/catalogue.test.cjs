@@ -9,13 +9,14 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const books=JSON.parse(fs.readFileSync(path.join(root,'books.json'),'utf8'));
 const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const keys=['id','title','authors','publisher','year','isbn','subjects','call_number','copies','cover'].sort();
-function element(id){return {id,hidden:false,textContent:'',value:'',open:false,children:[],handlers:{},_html:'',addEventListener(type,fn){this.handlers[type]=fn},set innerHTML(v){this._html=v;this.children=[...v.matchAll(/<button[^>]*data-s="([^"]*)"[^>]*>/g)].map(m=>({s:m[1],getAttribute(){return this.s},setAttribute(){}}))},get innerHTML(){return this._html},insertAdjacentHTML(where,v){this.innerHTML+=v},showModal(){this.open=true},close(){this.open=false;this.handlers.close?.({})}}}
-async function app(data=books,ok=true){
- const ids=['grid','chips','dlg','empty','more','count','dbody','dclose','q'];const els=Object.fromEntries(ids.map(k=>[k,element(k)]));
- const location={hash:'',pathname:'/',search:''};const calls=[],windowEvents={};
+function element(id,pendingEvents){return {id,hidden:false,textContent:'',value:'',open:false,children:[],handlers:{},_html:'',addEventListener(type,fn){this.handlers[type]=fn},set innerHTML(v){this._html=v;this.children=[...v.matchAll(/<button[^>]*data-s="([^"]*)"[^>]*>/g)].map(m=>({s:m[1],getAttribute(){return this.s},setAttribute(){}}))},get innerHTML(){return this._html},insertAdjacentHTML(where,v){this.innerHTML+=v},showModal(){this.open=true},close(){this.open=false;pendingEvents.push(()=>this.handlers.close?.({}))}}}
+async function app(data=books,ok=true,initialHash=''){
+ const pendingEvents=[];
+ const ids=['grid','chips','dlg','empty','more','count','dbody','dclose','q'];const els=Object.fromEntries(ids.map(k=>[k,element(k,pendingEvents)]));
+ const location={hash:initialHash,pathname:'/',search:''};const calls=[],windowEvents={};
  const context={document:{getElementById:id=>els[id]},location,history:{replaceState(a,b,url){location.hash=url.startsWith('#')?url:''}},window:{scrollTo(){},addEventListener(type,fn){windowEvents[type]=fn}},fetch:async url=>{calls.push(url);return {ok,json:async()=>JSON.parse(JSON.stringify(data))}},console};
  vm.runInNewContext(script,context,{timeout:1000});await new Promise(r=>setImmediate(r));
- return {els,location,calls,navigate(hash){location.hash=hash;windowEvents.hashchange?.()},search(q){els.q.handlers.input({target:{value:q}})},clickBook(id){els.grid.handlers.click({target:{closest(){return {getAttribute(){return String(id)}}}}})},subject(s){els.chips.handlers.click({target:{closest(){return {getAttribute(){return s}}}}})}};
+ return {els,location,calls,flushDialogEvents(){while(pendingEvents.length)pendingEvents.shift()()},syncFragment(){windowEvents.hashchange?.()},escape(){let prevented=false;els.dlg.handlers.cancel?.({preventDefault(){prevented=true}});if(!prevented)els.dlg.close()},navigate(hash){location.hash=hash;windowEvents.hashchange?.()},search(q){els.q.handlers.input({target:{value:q}})},clickBook(id){els.grid.handlers.click({target:{closest(){return {getAttribute(){return String(id)}}}}})},subject(s){els.chips.handlers.click({target:{closest(){return {getAttribute(){return s}}}}})}};
 }
 test('all 1026 factual records have the exact public schema',()=>{assert.equal(books.length,1026);const seen=new Set();for(const b of books){assert.deepEqual(Object.keys(b).sort(),keys);assert.ok(Number.isSafeInteger(b.id)&&b.id>0&&!seen.has(b.id));seen.add(b.id);assert.ok(Number.isSafeInteger(b.copies)&&b.copies>=0);for(const k of ['title','publisher','year','isbn','call_number'])assert.equal(typeof b[k],'string');for(const k of ['authors','subjects']){assert.ok(Array.isArray(b[k]));for(const s of b[k])assert.equal(typeof s,'string')}assert.equal(b.cover,'')}});
 test('only factual inventory fields, no descriptions or cover material',()=>{assert.equal(books.reduce((n,b)=>n+b.copies,0),1095);assert.equal(new Set(books.flatMap(b=>b.subjects)).size,194);assert.equal(books.find(b=>b.id===967).year,'2205');assert.ok(!fs.existsSync(path.join(root,'covers')));assert.ok(!fs.existsSync(path.join(root,'tools')))});
@@ -30,4 +31,25 @@ test('malformed IDs, duplicate IDs and invalid lists fail closed',async()=>{for(
 test('HTTP failures and non-array data show a load error',async()=>{for(const [data,ok] of [[books,false],[{},true]]){const a=await app(data,ok);assert.ok(a.els.empty.textContent.includes('could not load'));assert.equal(a.els.grid.innerHTML,'')}});
 
 test('same-document book links and back navigation update the dialog',async()=>{const a=await app();a.navigate('#book-169');assert.ok(a.els.dlg.open);assert.ok(a.els.dbody.innerHTML.includes('978-1-84236-878-7'));a.navigate('');assert.equal(a.els.dlg.open,false);a.navigate('#book-169');assert.ok(a.els.dlg.open);a.navigate('#book-999999');assert.equal(a.els.dlg.open,false)});
-test('a delayed close event cannot erase a newer open book fragment',async()=>{const a=await app();a.clickBook(169);a.els.dlg.handlers.close();assert.equal(a.location.hash,'#book-169');assert.ok(a.els.dlg.open)});
+test('a queued close event cannot erase a newer fragment before hashchange',async()=>{
+ const a=await app();a.clickBook(169);a.els.dclose.handlers.click();
+ a.location.hash='#book-'+books[1].id;
+ a.flushDialogEvents();
+ assert.equal(a.location.hash,'#book-'+books[1].id);
+ a.syncFragment();assert.ok(a.els.dlg.open);assert.ok(a.els.dbody.innerHTML.includes(books[1].isbn));
+});
+test('closing and reopening the same book does not lose its fragment',async()=>{
+ const a=await app();a.clickBook(169);a.els.dclose.handlers.click();a.clickBook(169);
+ a.flushDialogEvents();assert.equal(a.location.hash,'#book-169');assert.ok(a.els.dlg.open);
+});
+test('Escape clears the fragment before the queued native close event',async()=>{
+ const a=await app();a.clickBook(169);a.escape();assert.equal(a.location.hash,'');assert.equal(a.els.dlg.open,false);
+ a.location.hash='#book-169';a.flushDialogEvents();a.syncFragment();assert.ok(a.els.dlg.open);assert.equal(a.location.hash,'#book-169');
+});
+test('navigation to unknown or unrelated fragments closes without rewriting the URL',async()=>{
+ const a=await app();for(const hash of ['#book-999999','#about','']){a.clickBook(169);a.navigate(hash);a.flushDialogEvents();assert.equal(a.els.dlg.open,false);assert.equal(a.location.hash,hash)}
+});
+test('a valid initial deep link opens after the catalogue loads',async()=>{
+ const a=await app(books,true,'#book-169');assert.ok(a.els.dlg.open);assert.equal(a.location.hash,'#book-169');assert.ok(a.els.dbody.innerHTML.includes('978-1-84236-878-7'));
+});
+

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-TV2qADwB1j2PccQ5ciVMfwyuP4Vlq23D42blSP9Y5kI='; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-cSxko7ovZCMvCjZ1I51XMCwHiiqTim5P5LOIKeLvc8c='; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>Empathy School Library</title>
 <meta name="description" content="A reusable school library catalogue by Eric Gonzalez-Payne. Browse 1,026 factual book records from Empathy School Bali.">
 <meta name="author" content="Eric Gonzalez-Payne">
@@ -134,12 +134,16 @@ footer{max-width:1200px;margin:0 auto;padding:24px 16px 40px;color:var(--muted);
     if(!dlg.open) dlg.showModal();
     if(location.hash!=='#book-'+id) history.replaceState(null,'','#book-'+id);
   }
-  function close(){ if(dlg.open) dlg.close(); }
-  dlg.addEventListener('close',function(){ if(!dlg.open && /^#book-\d+$/.test(location.hash)) history.replaceState(null,'',location.pathname+location.search); });
+  function close(){
+    // Clear this route synchronously: native close events are queued and may arrive after a newer navigation.
+    if(/^#book-\d+$/.test(location.hash)) history.replaceState(null,'',location.pathname+location.search);
+    if(dlg.open) dlg.close();
+  }
+  dlg.addEventListener('cancel',function(e){ e.preventDefault(); close(); });
   function syncFragment(){
     var m=location.hash.match(/^#book-(\d+)$/);
     if(m && books.some(function(b){return b.id===+m[1]})) open(+m[1]);
-    else close();
+    else if(dlg.open) dlg.close();
   }
   window.addEventListener('hashchange',syncFragment);
   dlg.addEventListener('click',function(e){
@@ -173,3 +177,4 @@ footer{max-width:1200px;margin:0 auto;padding:24px 16px 40px;color:var(--muted);
 </script>
 </body>
 </html>
+
